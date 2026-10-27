@@ -1,0 +1,853 @@
+{
+  "prometheus": {
+    "provider": {
+      "Name": "default",
+      "default": true,
+      "address": "http://prometheus-operated.monitoring.svc.cluster.local:9090"
+    },
+    "applications": [
+      {
+        "name": "default",
+        "default": true,
+        "dashboards": [
+          {
+            "groupKind": "deployment",
+            "intervals": [
+              "1h"
+            ],
+            "rows": [
+              {
+                "name": "kpi",
+                "title": "Ключевые показатели",
+                "graphs": [
+                  {
+                    "name": "requests",
+                    "title": "Запросы",
+                    "graphType": "stat",
+                    "yAxisUnit": "req/s",
+                    "goodDirection": "up",
+                    "queryExpression": "sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[1m]))"
+                  },
+                  {
+                    "name": "latency_p99",
+                    "title": "Latency p99",
+                    "graphType": "stat",
+                    "yAxisUnit": "s",
+                    "goodDirection": "down",
+                    "colorSchemes": [
+                      "#C2410C"
+                    ],
+                    "queryExpression": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m])))"
+                  },
+                  {
+                    "name": "errors_5xx",
+                    "title": "Ошибки 5xx",
+                    "graphType": "stat",
+                    "yAxisUnit": "%",
+                    "goodDirection": "down",
+                    "colorSchemes": [
+                      "#B42318"
+                    ],
+                    "queryExpression": "100 * (sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_response_status_code=~\"5..\"}[5m])) or vector(0)) / sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))"
+                  },
+                  {
+                    "name": "cpu",
+                    "title": "CPU",
+                    "graphType": "stat",
+                    "yAxisUnit": "cores",
+                    "colorSchemes": [
+                      "#0E8A96"
+                    ],
+                    "queryExpression": "sum(rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "memory",
+                    "title": "Память",
+                    "graphType": "stat",
+                    "yAxisUnit": "bytes",
+                    "colorSchemes": [
+                      "#7C3AED"
+                    ],
+                    "queryExpression": "sum(container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "saturation_memory",
+                    "title": "Память · limit",
+                    "group": "Насыщение",
+                    "graphType": "stat",
+                    "yAxisUnit": "bytes",
+                    "colorSchemes": [
+                      "#7C3AED"
+                    ],
+                    "queryExpression": "sum(container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "saturation_cpu",
+                    "title": "CPU · limit",
+                    "group": "Насыщение",
+                    "graphType": "stat",
+                    "yAxisUnit": "cores",
+                    "colorSchemes": [
+                      "#0E8A96"
+                    ],
+                    "queryExpression": "sum(rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "name": "latency",
+                "title": "Latency",
+                "graphs": [
+                  {
+                    "name": "latency",
+                    "title": "Latency",
+                    "description": "histogram_quantile · http_server_request_duration_seconds",
+                    "graphType": "line",
+                    "metricName": "quantile",
+                    "yAxisUnit": "s",
+                    "colorSchemes": [
+                      "#1E40AF",
+                      "#3B82F6",
+                      "#C2410C"
+                    ],
+                    "queryExpression": "label_replace(histogram_quantile(0.5, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))), \"quantile\", \"p50\", \"\", \"\") or label_replace(histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))), \"quantile\", \"p95\", \"\", \"\") or label_replace(histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))), \"quantile\", \"p99\", \"\", \"\")",
+                    "thresholds": [
+                      {
+                        "key": "slo",
+                        "name": "порог 400 мс",
+                        "value": "0.4"
+                      }
+                    ],
+                    "span": 12
+                  }
+                ]
+              },
+              {
+                "name": "traffic_by_code",
+                "title": "Трафик по статусам",
+                "graphs": [
+                  {
+                    "name": "traffic_by_code",
+                    "title": "Трафик по статусам",
+                    "description": "rate(http_server_request_duration_seconds_count[1m]) by code",
+                    "graphType": "bar",
+                    "metricName": "code",
+                    "yAxisUnit": "req/s",
+                    "queryExpression": "sum by (code) (label_replace(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[1m]), \"code\", \"${1}xx\", \"http_response_status_code\", \"(.)..\"))",
+                    "span": 12
+                  }
+                ]
+              },
+              {
+                "name": "cpu_by_pod",
+                "title": "CPU по подам",
+                "graphs": [
+                  {
+                    "name": "cpu_by_pod",
+                    "title": "CPU по подам",
+                    "description": "container_cpu_usage_seconds_total · cores",
+                    "graphType": "line",
+                    "metricName": "pod",
+                    "yAxisUnit": "cores",
+                    "queryExpression": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      },
+                      {
+                        "key": "request",
+                        "name": "request",
+                        "queryExpression": "sum by (pod) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      }
+                    ],
+                    "span": 12
+                  }
+                ]
+              },
+              {
+                "name": "memory_by_pod",
+                "title": "Память по подам",
+                "graphs": [
+                  {
+                    "name": "memory_by_pod",
+                    "title": "Память по подам",
+                    "description": "container_memory_working_set_bytes",
+                    "graphType": "line",
+                    "metricName": "pod",
+                    "yAxisUnit": "bytes",
+                    "queryExpression": "sum by (pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                      }
+                    ],
+                    "span": 12
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "groupKind": "rollout",
+            "intervals": [
+              "1h"
+            ],
+            "rows": [
+              {
+                "name": "kpi",
+                "title": "Ключевые показатели",
+                "graphs": [
+                  {
+                    "name": "requests",
+                    "title": "Запросы",
+                    "graphType": "stat",
+                    "yAxisUnit": "req/s",
+                    "goodDirection": "up",
+                    "queryExpression": "sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[1m]))"
+                  },
+                  {
+                    "name": "latency_p99",
+                    "title": "Latency p99",
+                    "graphType": "stat",
+                    "yAxisUnit": "s",
+                    "goodDirection": "down",
+                    "colorSchemes": [
+                      "#C2410C"
+                    ],
+                    "queryExpression": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m])))"
+                  },
+                  {
+                    "name": "errors_5xx",
+                    "title": "Ошибки 5xx",
+                    "graphType": "stat",
+                    "yAxisUnit": "%",
+                    "goodDirection": "down",
+                    "colorSchemes": [
+                      "#B42318"
+                    ],
+                    "queryExpression": "100 * (sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_response_status_code=~\"5..\"}[5m])) or vector(0)) / sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))"
+                  },
+                  {
+                    "name": "cpu",
+                    "title": "CPU",
+                    "graphType": "stat",
+                    "yAxisUnit": "cores",
+                    "colorSchemes": [
+                      "#0E8A96"
+                    ],
+                    "queryExpression": "sum(rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "memory",
+                    "title": "Память",
+                    "graphType": "stat",
+                    "yAxisUnit": "bytes",
+                    "colorSchemes": [
+                      "#7C3AED"
+                    ],
+                    "queryExpression": "sum(container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "saturation_memory",
+                    "title": "Память · limit",
+                    "group": "Насыщение",
+                    "graphType": "stat",
+                    "yAxisUnit": "bytes",
+                    "colorSchemes": [
+                      "#7C3AED"
+                    ],
+                    "queryExpression": "sum(container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "saturation_cpu",
+                    "title": "CPU · limit",
+                    "group": "Насыщение",
+                    "graphType": "stat",
+                    "yAxisUnit": "cores",
+                    "colorSchemes": [
+                      "#0E8A96"
+                    ],
+                    "queryExpression": "sum(rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "name": "latency",
+                "title": "Latency",
+                "graphs": [
+                  {
+                    "name": "latency",
+                    "title": "Latency",
+                    "description": "histogram_quantile · http_server_request_duration_seconds",
+                    "graphType": "line",
+                    "metricName": "quantile",
+                    "yAxisUnit": "s",
+                    "colorSchemes": [
+                      "#1E40AF",
+                      "#3B82F6",
+                      "#C2410C"
+                    ],
+                    "queryExpression": "label_replace(histogram_quantile(0.5, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))), \"quantile\", \"p50\", \"\", \"\") or label_replace(histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))), \"quantile\", \"p95\", \"\", \"\") or label_replace(histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))), \"quantile\", \"p99\", \"\", \"\")",
+                    "thresholds": [
+                      {
+                        "key": "slo",
+                        "name": "порог 400 мс",
+                        "value": "0.4"
+                      }
+                    ],
+                    "span": 12
+                  }
+                ]
+              },
+              {
+                "name": "traffic_by_code",
+                "title": "Трафик по статусам",
+                "graphs": [
+                  {
+                    "name": "traffic_by_code",
+                    "title": "Трафик по статусам",
+                    "description": "rate(http_server_request_duration_seconds_count[1m]) by code",
+                    "graphType": "bar",
+                    "metricName": "code",
+                    "yAxisUnit": "req/s",
+                    "queryExpression": "sum by (code) (label_replace(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[1m]), \"code\", \"${1}xx\", \"http_response_status_code\", \"(.)..\"))",
+                    "span": 12
+                  }
+                ]
+              },
+              {
+                "name": "cpu_by_pod",
+                "title": "CPU по подам",
+                "graphs": [
+                  {
+                    "name": "cpu_by_pod",
+                    "title": "CPU по подам",
+                    "description": "container_cpu_usage_seconds_total · cores",
+                    "graphType": "line",
+                    "metricName": "pod",
+                    "yAxisUnit": "cores",
+                    "queryExpression": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      },
+                      {
+                        "key": "request",
+                        "name": "request",
+                        "queryExpression": "sum by (pod) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      }
+                    ],
+                    "span": 12
+                  }
+                ]
+              },
+              {
+                "name": "memory_by_pod",
+                "title": "Память по подам",
+                "graphs": [
+                  {
+                    "name": "memory_by_pod",
+                    "title": "Память по подам",
+                    "description": "container_memory_working_set_bytes",
+                    "graphType": "line",
+                    "metricName": "pod",
+                    "yAxisUnit": "bytes",
+                    "queryExpression": "sum by (pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                      }
+                    ],
+                    "span": 12
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "groupKind": "statefulset",
+            "intervals": [
+              "1h"
+            ],
+            "rows": [
+              {
+                "name": "kpi",
+                "title": "Ключевые показатели",
+                "graphs": [
+                  {
+                    "name": "requests",
+                    "title": "Запросы",
+                    "graphType": "stat",
+                    "yAxisUnit": "req/s",
+                    "goodDirection": "up",
+                    "queryExpression": "sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[1m]))"
+                  },
+                  {
+                    "name": "latency_p99",
+                    "title": "Latency p99",
+                    "graphType": "stat",
+                    "yAxisUnit": "s",
+                    "goodDirection": "down",
+                    "colorSchemes": [
+                      "#C2410C"
+                    ],
+                    "queryExpression": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m])))"
+                  },
+                  {
+                    "name": "errors_5xx",
+                    "title": "Ошибки 5xx",
+                    "graphType": "stat",
+                    "yAxisUnit": "%",
+                    "goodDirection": "down",
+                    "colorSchemes": [
+                      "#B42318"
+                    ],
+                    "queryExpression": "100 * (sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_response_status_code=~\"5..\"}[5m])) or vector(0)) / sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))"
+                  },
+                  {
+                    "name": "cpu",
+                    "title": "CPU",
+                    "graphType": "stat",
+                    "yAxisUnit": "cores",
+                    "colorSchemes": [
+                      "#0E8A96"
+                    ],
+                    "queryExpression": "sum(rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "memory",
+                    "title": "Память",
+                    "graphType": "stat",
+                    "yAxisUnit": "bytes",
+                    "colorSchemes": [
+                      "#7C3AED"
+                    ],
+                    "queryExpression": "sum(container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "saturation_memory",
+                    "title": "Память · limit",
+                    "group": "Насыщение",
+                    "graphType": "stat",
+                    "yAxisUnit": "bytes",
+                    "colorSchemes": [
+                      "#7C3AED"
+                    ],
+                    "queryExpression": "sum(container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "saturation_cpu",
+                    "title": "CPU · limit",
+                    "group": "Насыщение",
+                    "graphType": "stat",
+                    "yAxisUnit": "cores",
+                    "colorSchemes": [
+                      "#0E8A96"
+                    ],
+                    "queryExpression": "sum(rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "name": "latency",
+                "title": "Latency",
+                "graphs": [
+                  {
+                    "name": "latency",
+                    "title": "Latency",
+                    "description": "histogram_quantile · http_server_request_duration_seconds",
+                    "graphType": "line",
+                    "metricName": "quantile",
+                    "yAxisUnit": "s",
+                    "colorSchemes": [
+                      "#1E40AF",
+                      "#3B82F6",
+                      "#C2410C"
+                    ],
+                    "queryExpression": "label_replace(histogram_quantile(0.5, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))), \"quantile\", \"p50\", \"\", \"\") or label_replace(histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))), \"quantile\", \"p95\", \"\", \"\") or label_replace(histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))), \"quantile\", \"p99\", \"\", \"\")",
+                    "thresholds": [
+                      {
+                        "key": "slo",
+                        "name": "порог 400 мс",
+                        "value": "0.4"
+                      }
+                    ],
+                    "span": 12
+                  }
+                ]
+              },
+              {
+                "name": "traffic_by_code",
+                "title": "Трафик по статусам",
+                "graphs": [
+                  {
+                    "name": "traffic_by_code",
+                    "title": "Трафик по статусам",
+                    "description": "rate(http_server_request_duration_seconds_count[1m]) by code",
+                    "graphType": "bar",
+                    "metricName": "code",
+                    "yAxisUnit": "req/s",
+                    "queryExpression": "sum by (code) (label_replace(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[1m]), \"code\", \"${1}xx\", \"http_response_status_code\", \"(.)..\"))",
+                    "span": 12
+                  }
+                ]
+              },
+              {
+                "name": "cpu_by_pod",
+                "title": "CPU по подам",
+                "graphs": [
+                  {
+                    "name": "cpu_by_pod",
+                    "title": "CPU по подам",
+                    "description": "container_cpu_usage_seconds_total · cores",
+                    "graphType": "line",
+                    "metricName": "pod",
+                    "yAxisUnit": "cores",
+                    "queryExpression": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      },
+                      {
+                        "key": "request",
+                        "name": "request",
+                        "queryExpression": "sum by (pod) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      }
+                    ],
+                    "span": 12
+                  }
+                ]
+              },
+              {
+                "name": "memory_by_pod",
+                "title": "Память по подам",
+                "graphs": [
+                  {
+                    "name": "memory_by_pod",
+                    "title": "Память по подам",
+                    "description": "container_memory_working_set_bytes",
+                    "graphType": "line",
+                    "metricName": "pod",
+                    "yAxisUnit": "bytes",
+                    "queryExpression": "sum by (pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                      }
+                    ],
+                    "span": 12
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "groupKind": "pod",
+            "intervals": [
+              "1h"
+            ],
+            "rows": [
+              {
+                "name": "kpi",
+                "title": "Ключевые показатели",
+                "graphs": [
+                  {
+                    "name": "requests",
+                    "title": "Запросы",
+                    "graphType": "stat",
+                    "yAxisUnit": "req/s",
+                    "goodDirection": "up",
+                    "queryExpression": "sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[1m]))"
+                  },
+                  {
+                    "name": "latency_p99",
+                    "title": "Latency p99",
+                    "graphType": "stat",
+                    "yAxisUnit": "s",
+                    "goodDirection": "down",
+                    "colorSchemes": [
+                      "#C2410C"
+                    ],
+                    "queryExpression": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m])))"
+                  },
+                  {
+                    "name": "errors_5xx",
+                    "title": "Ошибки 5xx",
+                    "graphType": "stat",
+                    "yAxisUnit": "%",
+                    "goodDirection": "down",
+                    "colorSchemes": [
+                      "#B42318"
+                    ],
+                    "queryExpression": "100 * (sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_response_status_code=~\"5..\"}[5m])) or vector(0)) / sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))"
+                  },
+                  {
+                    "name": "cpu",
+                    "title": "CPU",
+                    "graphType": "stat",
+                    "yAxisUnit": "cores",
+                    "colorSchemes": [
+                      "#0E8A96"
+                    ],
+                    "queryExpression": "sum(rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "memory",
+                    "title": "Память",
+                    "graphType": "stat",
+                    "yAxisUnit": "bytes",
+                    "colorSchemes": [
+                      "#7C3AED"
+                    ],
+                    "queryExpression": "sum(container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "saturation_memory",
+                    "title": "Память · limit",
+                    "group": "Насыщение",
+                    "graphType": "stat",
+                    "yAxisUnit": "bytes",
+                    "colorSchemes": [
+                      "#7C3AED"
+                    ],
+                    "queryExpression": "sum(container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "saturation_cpu",
+                    "title": "CPU · limit",
+                    "group": "Насыщение",
+                    "graphType": "stat",
+                    "yAxisUnit": "cores",
+                    "colorSchemes": [
+                      "#0E8A96"
+                    ],
+                    "queryExpression": "sum(rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "name": "latency",
+                "title": "Latency",
+                "graphs": [
+                  {
+                    "name": "latency",
+                    "title": "Latency",
+                    "description": "histogram_quantile · http_server_request_duration_seconds",
+                    "graphType": "line",
+                    "metricName": "quantile",
+                    "yAxisUnit": "s",
+                    "colorSchemes": [
+                      "#1E40AF",
+                      "#3B82F6",
+                      "#C2410C"
+                    ],
+                    "queryExpression": "label_replace(histogram_quantile(0.5, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))), \"quantile\", \"p50\", \"\", \"\") or label_replace(histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))), \"quantile\", \"p95\", \"\", \"\") or label_replace(histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))), \"quantile\", \"p99\", \"\", \"\")",
+                    "thresholds": [
+                      {
+                        "key": "slo",
+                        "name": "порог 400 мс",
+                        "value": "0.4"
+                      }
+                    ],
+                    "span": 12
+                  }
+                ]
+              },
+              {
+                "name": "traffic_by_code",
+                "title": "Трафик по статусам",
+                "graphs": [
+                  {
+                    "name": "traffic_by_code",
+                    "title": "Трафик по статусам",
+                    "description": "rate(http_server_request_duration_seconds_count[1m]) by code",
+                    "graphType": "bar",
+                    "metricName": "code",
+                    "yAxisUnit": "req/s",
+                    "queryExpression": "sum by (code) (label_replace(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[1m]), \"code\", \"${1}xx\", \"http_response_status_code\", \"(.)..\"))",
+                    "span": 12
+                  }
+                ]
+              },
+              {
+                "name": "cpu_by_pod",
+                "title": "CPU по подам",
+                "graphs": [
+                  {
+                    "name": "cpu_by_pod",
+                    "title": "CPU по подам",
+                    "description": "container_cpu_usage_seconds_total · cores",
+                    "graphType": "line",
+                    "metricName": "pod",
+                    "yAxisUnit": "cores",
+                    "queryExpression": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      },
+                      {
+                        "key": "request",
+                        "name": "request",
+                        "queryExpression": "sum by (pod) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                      }
+                    ],
+                    "span": 12
+                  }
+                ]
+              },
+              {
+                "name": "memory_by_pod",
+                "title": "Память по подам",
+                "graphs": [
+                  {
+                    "name": "memory_by_pod",
+                    "title": "Память по подам",
+                    "description": "container_memory_working_set_bytes",
+                    "graphType": "line",
+                    "metricName": "pod",
+                    "yAxisUnit": "bytes",
+                    "queryExpression": "sum by (pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                    "thresholds": [
+                      {
+                        "key": "limit",
+                        "name": "limit",
+                        "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                      }
+                    ],
+                    "span": 12
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
