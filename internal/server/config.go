@@ -32,6 +32,20 @@ type Graph struct {
 	GoodDirection string `json:"goodDirection,omitempty"`
 	// Group joins neighbouring stat tiles into one split KPI cell (UI only).
 	Group string `json:"group,omitempty"`
+	// QueryType is "range" (default, over the selected period) or "instant" (evaluated now).
+	QueryType string `json:"queryType,omitempty"`
+	// SplitBy names a label whose values the UI lists separately (e.g. probe_type).
+	SplitBy string `json:"splitBy,omitempty"`
+	// WarnAbove highlights a value in the UI when it is greater than this number.
+	WarnAbove *float64 `json:"warnAbove,omitempty"`
+	// Role tells special layouts what the graph is (e.g. p50/p95/max/request/limit/above for "fit").
+	Role string `json:"role,omitempty"`
+	// Optional graphs are hidden in the UI when they return no data.
+	Optional bool `json:"optional,omitempty"`
+}
+
+func (g *Graph) isInstant() bool {
+	return g.QueryType == "instant"
 }
 
 type Row struct {
@@ -39,6 +53,10 @@ type Row struct {
 	Title  string   `json:"title"`
 	Tab    string   `json:"tab"`
 	Graphs []*Graph `json:"graphs"`
+	// Layout selects how the UI draws the row: "" (tiles/charts), "units", "table" or "fit".
+	Layout string `json:"layout,omitempty"`
+	// Description is a short subtitle shown next to the row title.
+	Description string `json:"description,omitempty"`
 }
 
 func (r *Row) getGraph(name string) *Graph {

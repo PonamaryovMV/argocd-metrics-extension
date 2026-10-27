@@ -26,6 +26,16 @@ export interface Graph {
   goodDirection?: "up" | "down" | "";
   /** Stat tiles with the same group are drawn as one KPI cell split in halves (e.g. "Насыщение"). */
   group?: string;
+  /** "range" (default, over the selected period) or "instant" (evaluated now). */
+  queryType?: "range" | "instant" | "";
+  /** Label whose values are listed separately (e.g. probe_type, reason). */
+  splitBy?: string;
+  /** Highlight the value when it is greater than this number. */
+  warnAbove?: number;
+  /** Meaning of the graph inside special layouts ("fit": p50, p95, max, request, limit, above). */
+  role?: string;
+  /** Hide the graph when it returns no data. */
+  optional?: boolean;
 }
 
 export interface Row {
@@ -33,6 +43,9 @@ export interface Row {
   title?: string;
   tab?: string;
   graphs: Graph[];
+  /** "" (tiles / charts), "units" (card per pod or container), "table", "fit" (requests vs usage). */
+  layout?: "" | "units" | "table" | "fit";
+  description?: string;
 }
 
 export interface Dashboard {
@@ -49,9 +62,11 @@ export interface Dashboard {
   showPods?: boolean;
 }
 
+/** Range queries return "values", instant queries return a single "value". */
 export interface PromSeries {
   metric: Record<string, string>;
-  values: [number, string][];
+  values?: [number, string][];
+  value?: [number, string];
 }
 
 export interface ThresholdResult {
@@ -116,6 +131,7 @@ export async function fetchGraph(
 ): Promise<GraphResult> {
   const params = [
     ["name", `${ctx.resourceName}.*`],
+    ["resource", ctx.resourceName],
     ["namespace", ctx.namespace],
     ["application_name", ctx.applicationName],
     ["project", ctx.project],

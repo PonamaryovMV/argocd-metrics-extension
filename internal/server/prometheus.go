@@ -89,7 +89,9 @@ func queryStep(duration time.Duration) time.Duration {
 }
 
 // executeGraphQuery executes a prometheus query and returns the result.
-func executeGraphQuery(ctx *gin.Context, queryExpression string, env map[string][]string, duration time.Duration, pp *PrometheusProvider) (model.Value, v1.Warnings, error) {
+// Range queries cover the selected period; instant queries are evaluated at "now"
+// and are used for summaries such as increase(...[{{.duration}}]) or 7-day quantiles.
+func executeGraphQuery(ctx *gin.Context, queryExpression string, env map[string][]string, duration time.Duration, instant bool, pp *PrometheusProvider) (model.Value, v1.Warnings, error) {
 	tmpl, err := template.New("query").Parse(queryExpression)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error parsing query template: %s", err)
@@ -108,13 +110,22 @@ func executeGraphQuery(ctx *gin.Context, queryExpression string, env map[string]
 
 	strQuery := buf.String()
 	end := time.Now()
-	r := v1.Range{
-		Start: end.Add(-duration),
-		End:   end,
-		Step:  queryStep(duration),
-	}
 
-	result, warnings, infos, err := pp.provider.QueryRange(ctx, strQuery, r)
+	var (
+		result   model.Value
+		warnings v1.Warnings
+		infos    v1.Infos
+	)
+	if instant {
+		result, warnings, infos, err = pp.provider.Query(ctx, strQuery, end)
+	} else {
+		r := v1.Range{
+			Start: end.Add(-duration),
+			End:   end,
+			Step:  queryStep(duration),
+		}
+		result, warnings, infos, err = pp.provider.QueryRange(ctx, strQuery, r)
+	}
 
 	// Infos are informational notices from Prometheus (e.g. about query
 	// behavior). They are not errors, so log them and continue.
@@ -170,7 +181,7 @@ func (pp *PrometheusProvider) execute(ctx *gin.Context) {
 	if graph != nil {
 
 		var data AggregatedResponse
-		result, warnings, err := executeGraphQuery(ctx, graph.QueryExpression, env, duration, pp)
+		result, warnings, err := executeGraphQuery(ctx, graph.QueryExpression, env, duration, graph.isInstant(), pp)
 
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, err)
@@ -196,9 +207,9 @@ func (pp *PrometheusProvider) execute(ctx *gin.Context) {
 
 				//If threshold.value present, threshold.value gets executed else,threshold.queryExpression gets executed.
 				if threshold.Value != "" {
-					result, warnings, err = executeGraphQuery(ctx, threshold.Value, env, duration, pp)
+					result, warnings, err = executeGraphQuery(ctx, threshold.Value, env, duration, graph.isInstant(), pp)
 				} else {
-					result, warnings, err = executeGraphQuery(ctx, threshold.QueryExpression, env, duration, pp)
+					result, warnings, err = executeGraphQuery(ctx, threshold.QueryExpression, env, duration, graph.isInstant(), pp)
 				}
 				if err != nil {
 					ctx.JSON(http.StatusBadRequest, err)

@@ -5,300 +5,1987 @@
     data:
       config.json: |
         {
-        "prometheus": {
-          "applications": [
-            {
-              "name": "default",
+          "prometheus": {
+            "applications": [
+              {
+                "name": "default",
+                "default": true,
+                "dashboards": [
+                  {
+                    "groupKind": "deployment",
+                    "intervals": [
+                      "15m",
+                      "1h",
+                      "6h",
+                      "24h"
+                    ],
+                    "rows": [
+                      {
+                        "name": "kpi",
+                        "title": "Ключевые показатели",
+                        "graphs": [
+                          {
+                            "name": "requests",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[1m]))",
+                            "goodDirection": "up",
+                            "optional": true,
+                            "description": "Входящие HTTP-запросы"
+                          },
+                          {
+                            "name": "errors_5xx",
+                            "title": "Ошибки 5xx",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\", http_response_status_code=~\"5..\"}[5m])) or 0 * sum (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))) / sum (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))",
+                            "goodDirection": "down",
+                            "optional": true,
+                            "colorSchemes": [
+                              "#B42318"
+                            ]
+                          },
+                          {
+                            "name": "latency_p90",
+                            "title": "Latency p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m])))",
+                            "goodDirection": "down",
+                            "optional": true,
+                            "colorSchemes": [
+                              "#3B82F6"
+                            ]
+                          },
+                          {
+                            "name": "latency_p99",
+                            "title": "Latency p99",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m])))",
+                            "goodDirection": "down",
+                            "optional": true,
+                            "colorSchemes": [
+                              "#C2410C"
+                            ]
+                          },
+                          {
+                            "name": "restarts",
+                            "title": "Рестарты",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "queryType": "instant",
+                            "warnAbove": 0,
+                            "description": "Рестарты контейнеров за выбранный период"
+                          },
+                          {
+                            "name": "probes_failed",
+                            "title": "Неудачные probe",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum by (probe_type) (increase(prober_probe_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", result=\"failed\"}[{{.duration}}]))",
+                            "queryType": "instant",
+                            "splitBy": "probe_type",
+                            "warnAbove": 0,
+                            "description": "Неудачные liveness/readiness/startup probe за выбранный период"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "http_charts",
+                        "title": "Входящие запросы",
+                        "graphs": [
+                          {
+                            "name": "latency",
+                            "title": "Latency",
+                            "graphType": "line",
+                            "yAxisUnit": "s",
+                            "queryExpression": "label_replace(histogram_quantile(0.5, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))), \"quantile\", \"p50\", \"\", \"\") or label_replace(histogram_quantile(0.9, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))), \"quantile\", \"p90\", \"\", \"\") or label_replace(histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))), \"quantile\", \"p99\", \"\", \"\")",
+                            "metricName": "quantile",
+                            "span": 6,
+                            "optional": true,
+                            "description": "http_server_request_duration_seconds",
+                            "colorSchemes": [
+                              "#1E40AF",
+                              "#3B82F6",
+                              "#C2410C"
+                            ]
+                          },
+                          {
+                            "name": "traffic_by_code",
+                            "title": "Запросы по кодам ответа",
+                            "graphType": "bar",
+                            "metricName": "code",
+                            "yAxisUnit": "req/s",
+                            "span": 6,
+                            "optional": true,
+                            "description": "http_server_request_duration_seconds_count",
+                            "queryExpression": "sum by (code) (label_replace(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[1m]), \"code\", \"${1}xx\", \"http_response_status_code\", \"(.)..\"))"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "routes",
+                        "title": "Эндпоинты",
+                        "layout": "table",
+                        "description": "входящие HTTP по маршрутам · среднее за период",
+                        "graphs": [
+                          {
+                            "name": "route_rps",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}]))",
+                            "metricName": "http_route",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "route_5xx",
+                            "title": "5xx",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\", http_response_status_code=~\"5..\"}[{{.duration}}])) or 0 * sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}]))) / sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}]))",
+                            "metricName": "http_route",
+                            "queryType": "instant",
+                            "warnAbove": 1,
+                            "optional": true
+                          },
+                          {
+                            "name": "route_p90",
+                            "title": "p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}])))",
+                            "metricName": "http_route",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "route_trend",
+                            "title": "Тренд",
+                            "graphType": "line",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))",
+                            "metricName": "http_route",
+                            "optional": true
+                          }
+                        ]
+                      },
+                      {
+                        "name": "http_deps",
+                        "title": "Исходящие HTTP",
+                        "layout": "table",
+                        "description": "http_client_* · среднее за период",
+                        "graphs": [
+                          {
+                            "name": "out_rps",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "out_5xx",
+                            "title": "5xx",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_response_status_code=~\"5..\"}[{{.duration}}])) or 0 * sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))) / sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "warnAbove": 1,
+                            "optional": true
+                          },
+                          {
+                            "name": "out_p90",
+                            "title": "p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, server_address) (rate(http_client_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}])))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "out_queue_p90",
+                            "title": "Ожидание соединения p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, server_address) (rate(http_client_request_time_in_queue_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}])))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "out_trend",
+                            "title": "Тренд",
+                            "graphType": "line",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))",
+                            "metricName": "server_address",
+                            "optional": true
+                          }
+                        ]
+                      },
+                      {
+                        "name": "graph_deps",
+                        "title": "Зависимости по трейсам",
+                        "layout": "table",
+                        "description": "service graph · Redis, БД, Kafka и другие сервисы · среднее за период",
+                        "graphs": [
+                          {
+                            "name": "dep_rps",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (server) (rate(traces_service_graph_request_total{client=\"{{.resource}}\"}[{{.duration}}]))",
+                            "metricName": "server",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "dep_errors",
+                            "title": "Ошибки",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum by (server) (rate(traces_service_graph_request_failed_total{client=\"{{.resource}}\"}[{{.duration}}])) or 0 * sum by (server) (rate(traces_service_graph_request_total{client=\"{{.resource}}\"}[{{.duration}}]))) / sum by (server) (rate(traces_service_graph_request_total{client=\"{{.resource}}\"}[{{.duration}}]))",
+                            "metricName": "server",
+                            "queryType": "instant",
+                            "warnAbove": 1,
+                            "optional": true
+                          },
+                          {
+                            "name": "dep_p90",
+                            "title": "p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, server) (rate(traces_service_graph_request_server_seconds_bucket{client=\"{{.resource}}\"}[{{.duration}}])))",
+                            "metricName": "server",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "dep_trend",
+                            "title": "Тренд",
+                            "graphType": "line",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (server) (rate(traces_service_graph_request_total{client=\"{{.resource}}\"}[5m]))",
+                            "metricName": "server",
+                            "optional": true
+                          }
+                        ]
+                      },
+                      {
+                        "name": "units",
+                        "title": "Поды",
+                        "layout": "units",
+                        "description": "сумма по контейнерам пода · полоса = % от limit, черта = request",
+                        "graphs": [
+                          {
+                            "name": "unit_cpu",
+                            "title": "CPU",
+                            "graphType": "line",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                            "metricName": "pod",
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              },
+                              {
+                                "key": "request",
+                                "name": "request",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              }
+                            ]
+                          },
+                          {
+                            "name": "unit_memory",
+                            "title": "Память",
+                            "graphType": "line",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "sum by (pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                            "metricName": "pod",
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                              },
+                              {
+                                "key": "request",
+                                "name": "request",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                              }
+                            ]
+                          },
+                          {
+                            "name": "unit_throttling",
+                            "title": "Throttling",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * sum by (pod) (rate(container_cpu_cfs_throttled_periods_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}])) / sum by (pod) (rate(container_cpu_cfs_periods_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "pod",
+                            "queryType": "instant",
+                            "warnAbove": 5
+                          },
+                          {
+                            "name": "unit_restarts",
+                            "title": "Рестарты",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum by (pod) (increase(kube_pod_container_status_restarts_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "pod",
+                            "queryType": "instant",
+                            "warnAbove": 0
+                          },
+                          {
+                            "name": "unit_probes",
+                            "title": "Probe L/R/S",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum by (pod, probe_type) (increase(prober_probe_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", result=\"failed\"}[{{.duration}}]))",
+                            "metricName": "pod",
+                            "queryType": "instant",
+                            "splitBy": "probe_type",
+                            "warnAbove": 0
+                          },
+                          {
+                            "name": "unit_last_reason",
+                            "title": "Последнее завершение",
+                            "graphType": "note",
+                            "metricName": "pod",
+                            "queryType": "instant",
+                            "splitBy": "reason",
+                            "queryExpression": "max by (pod, reason) (kube_pod_container_status_last_terminated_reason{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}) > 0"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "resource_charts",
+                        "title": "Ресурсы",
+                        "graphs": [
+                          {
+                            "name": "cpu_chart",
+                            "title": "CPU по подам",
+                            "graphType": "line",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                            "metricName": "pod",
+                            "span": 6,
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              },
+                              {
+                                "key": "request",
+                                "name": "request",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              }
+                            ]
+                          },
+                          {
+                            "name": "memory_chart",
+                            "title": "Память по подам",
+                            "graphType": "line",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "sum by (pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                            "metricName": "pod",
+                            "span": 6,
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "name": "fit_cpu",
+                        "title": "CPU: request против потребления",
+                        "layout": "fit",
+                        "description": "все поды · по контейнерам · за 7 дней (или меньше, если Prometheus хранит меньше)",
+                        "graphs": [
+                          {
+                            "name": "fit_cpu_p50",
+                            "title": "p50",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "quantile_over_time(0.5, (max by (container) (sum by (container, pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "p50"
+                          },
+                          {
+                            "name": "fit_cpu_p95",
+                            "title": "p95",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "quantile_over_time(0.95, (max by (container) (sum by (container, pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "p95"
+                          },
+                          {
+                            "name": "fit_cpu_max",
+                            "title": "max",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "max_over_time((max by (container) (sum by (container, pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "max"
+                          },
+                          {
+                            "name": "fit_cpu_request",
+                            "title": "request",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "max by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "request"
+                          },
+                          {
+                            "name": "fit_cpu_limit",
+                            "title": "limit",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "max by (container) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "limit"
+                          },
+                          {
+                            "name": "fit_cpu_above",
+                            "title": "Выше request",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * avg_over_time((max by (container) (sum by (container, pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))) > bool on (container) max by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"}))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "above"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "fit_memory",
+                        "title": "Память: request против потребления",
+                        "layout": "fit",
+                        "description": "все поды · по контейнерам · за 7 дней (или меньше, если Prometheus хранит меньше)",
+                        "graphs": [
+                          {
+                            "name": "fit_memory_p50",
+                            "title": "p50",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "quantile_over_time(0.5, (max by (container) (sum by (container, pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "p50"
+                          },
+                          {
+                            "name": "fit_memory_p95",
+                            "title": "p95",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "quantile_over_time(0.95, (max by (container) (sum by (container, pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "p95"
+                          },
+                          {
+                            "name": "fit_memory_max",
+                            "title": "max",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "max_over_time((max by (container) (sum by (container, pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "max"
+                          },
+                          {
+                            "name": "fit_memory_request",
+                            "title": "request",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "max by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "request"
+                          },
+                          {
+                            "name": "fit_memory_limit",
+                            "title": "limit",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "max by (container) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "limit"
+                          },
+                          {
+                            "name": "fit_memory_above",
+                            "title": "Выше request",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * avg_over_time((max by (container) (sum by (container, pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})) > bool on (container) max by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"}))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "above"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "groupKind": "rollout",
+                    "intervals": [
+                      "15m",
+                      "1h",
+                      "6h",
+                      "24h"
+                    ],
+                    "rows": [
+                      {
+                        "name": "kpi",
+                        "title": "Ключевые показатели",
+                        "graphs": [
+                          {
+                            "name": "requests",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[1m]))",
+                            "goodDirection": "up",
+                            "optional": true,
+                            "description": "Входящие HTTP-запросы"
+                          },
+                          {
+                            "name": "errors_5xx",
+                            "title": "Ошибки 5xx",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\", http_response_status_code=~\"5..\"}[5m])) or 0 * sum (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))) / sum (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))",
+                            "goodDirection": "down",
+                            "optional": true,
+                            "colorSchemes": [
+                              "#B42318"
+                            ]
+                          },
+                          {
+                            "name": "latency_p90",
+                            "title": "Latency p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m])))",
+                            "goodDirection": "down",
+                            "optional": true,
+                            "colorSchemes": [
+                              "#3B82F6"
+                            ]
+                          },
+                          {
+                            "name": "latency_p99",
+                            "title": "Latency p99",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m])))",
+                            "goodDirection": "down",
+                            "optional": true,
+                            "colorSchemes": [
+                              "#C2410C"
+                            ]
+                          },
+                          {
+                            "name": "restarts",
+                            "title": "Рестарты",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "queryType": "instant",
+                            "warnAbove": 0,
+                            "description": "Рестарты контейнеров за выбранный период"
+                          },
+                          {
+                            "name": "probes_failed",
+                            "title": "Неудачные probe",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum by (probe_type) (increase(prober_probe_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", result=\"failed\"}[{{.duration}}]))",
+                            "queryType": "instant",
+                            "splitBy": "probe_type",
+                            "warnAbove": 0,
+                            "description": "Неудачные liveness/readiness/startup probe за выбранный период"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "http_charts",
+                        "title": "Входящие запросы",
+                        "graphs": [
+                          {
+                            "name": "latency",
+                            "title": "Latency",
+                            "graphType": "line",
+                            "yAxisUnit": "s",
+                            "queryExpression": "label_replace(histogram_quantile(0.5, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))), \"quantile\", \"p50\", \"\", \"\") or label_replace(histogram_quantile(0.9, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))), \"quantile\", \"p90\", \"\", \"\") or label_replace(histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))), \"quantile\", \"p99\", \"\", \"\")",
+                            "metricName": "quantile",
+                            "span": 6,
+                            "optional": true,
+                            "description": "http_server_request_duration_seconds",
+                            "colorSchemes": [
+                              "#1E40AF",
+                              "#3B82F6",
+                              "#C2410C"
+                            ]
+                          },
+                          {
+                            "name": "traffic_by_code",
+                            "title": "Запросы по кодам ответа",
+                            "graphType": "bar",
+                            "metricName": "code",
+                            "yAxisUnit": "req/s",
+                            "span": 6,
+                            "optional": true,
+                            "description": "http_server_request_duration_seconds_count",
+                            "queryExpression": "sum by (code) (label_replace(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[1m]), \"code\", \"${1}xx\", \"http_response_status_code\", \"(.)..\"))"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "routes",
+                        "title": "Эндпоинты",
+                        "layout": "table",
+                        "description": "входящие HTTP по маршрутам · среднее за период",
+                        "graphs": [
+                          {
+                            "name": "route_rps",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}]))",
+                            "metricName": "http_route",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "route_5xx",
+                            "title": "5xx",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\", http_response_status_code=~\"5..\"}[{{.duration}}])) or 0 * sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}]))) / sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}]))",
+                            "metricName": "http_route",
+                            "queryType": "instant",
+                            "warnAbove": 1,
+                            "optional": true
+                          },
+                          {
+                            "name": "route_p90",
+                            "title": "p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}])))",
+                            "metricName": "http_route",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "route_trend",
+                            "title": "Тренд",
+                            "graphType": "line",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))",
+                            "metricName": "http_route",
+                            "optional": true
+                          }
+                        ]
+                      },
+                      {
+                        "name": "http_deps",
+                        "title": "Исходящие HTTP",
+                        "layout": "table",
+                        "description": "http_client_* · среднее за период",
+                        "graphs": [
+                          {
+                            "name": "out_rps",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "out_5xx",
+                            "title": "5xx",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_response_status_code=~\"5..\"}[{{.duration}}])) or 0 * sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))) / sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "warnAbove": 1,
+                            "optional": true
+                          },
+                          {
+                            "name": "out_p90",
+                            "title": "p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, server_address) (rate(http_client_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}])))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "out_queue_p90",
+                            "title": "Ожидание соединения p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, server_address) (rate(http_client_request_time_in_queue_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}])))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "out_trend",
+                            "title": "Тренд",
+                            "graphType": "line",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))",
+                            "metricName": "server_address",
+                            "optional": true
+                          }
+                        ]
+                      },
+                      {
+                        "name": "graph_deps",
+                        "title": "Зависимости по трейсам",
+                        "layout": "table",
+                        "description": "service graph · Redis, БД, Kafka и другие сервисы · среднее за период",
+                        "graphs": [
+                          {
+                            "name": "dep_rps",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (server) (rate(traces_service_graph_request_total{client=\"{{.resource}}\"}[{{.duration}}]))",
+                            "metricName": "server",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "dep_errors",
+                            "title": "Ошибки",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum by (server) (rate(traces_service_graph_request_failed_total{client=\"{{.resource}}\"}[{{.duration}}])) or 0 * sum by (server) (rate(traces_service_graph_request_total{client=\"{{.resource}}\"}[{{.duration}}]))) / sum by (server) (rate(traces_service_graph_request_total{client=\"{{.resource}}\"}[{{.duration}}]))",
+                            "metricName": "server",
+                            "queryType": "instant",
+                            "warnAbove": 1,
+                            "optional": true
+                          },
+                          {
+                            "name": "dep_p90",
+                            "title": "p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, server) (rate(traces_service_graph_request_server_seconds_bucket{client=\"{{.resource}}\"}[{{.duration}}])))",
+                            "metricName": "server",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "dep_trend",
+                            "title": "Тренд",
+                            "graphType": "line",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (server) (rate(traces_service_graph_request_total{client=\"{{.resource}}\"}[5m]))",
+                            "metricName": "server",
+                            "optional": true
+                          }
+                        ]
+                      },
+                      {
+                        "name": "units",
+                        "title": "Поды",
+                        "layout": "units",
+                        "description": "сумма по контейнерам пода · полоса = % от limit, черта = request",
+                        "graphs": [
+                          {
+                            "name": "unit_cpu",
+                            "title": "CPU",
+                            "graphType": "line",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                            "metricName": "pod",
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              },
+                              {
+                                "key": "request",
+                                "name": "request",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              }
+                            ]
+                          },
+                          {
+                            "name": "unit_memory",
+                            "title": "Память",
+                            "graphType": "line",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "sum by (pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                            "metricName": "pod",
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                              },
+                              {
+                                "key": "request",
+                                "name": "request",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                              }
+                            ]
+                          },
+                          {
+                            "name": "unit_throttling",
+                            "title": "Throttling",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * sum by (pod) (rate(container_cpu_cfs_throttled_periods_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}])) / sum by (pod) (rate(container_cpu_cfs_periods_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "pod",
+                            "queryType": "instant",
+                            "warnAbove": 5
+                          },
+                          {
+                            "name": "unit_restarts",
+                            "title": "Рестарты",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum by (pod) (increase(kube_pod_container_status_restarts_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "pod",
+                            "queryType": "instant",
+                            "warnAbove": 0
+                          },
+                          {
+                            "name": "unit_probes",
+                            "title": "Probe L/R/S",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum by (pod, probe_type) (increase(prober_probe_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", result=\"failed\"}[{{.duration}}]))",
+                            "metricName": "pod",
+                            "queryType": "instant",
+                            "splitBy": "probe_type",
+                            "warnAbove": 0
+                          },
+                          {
+                            "name": "unit_last_reason",
+                            "title": "Последнее завершение",
+                            "graphType": "note",
+                            "metricName": "pod",
+                            "queryType": "instant",
+                            "splitBy": "reason",
+                            "queryExpression": "max by (pod, reason) (kube_pod_container_status_last_terminated_reason{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}) > 0"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "resource_charts",
+                        "title": "Ресурсы",
+                        "graphs": [
+                          {
+                            "name": "cpu_chart",
+                            "title": "CPU по подам",
+                            "graphType": "line",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                            "metricName": "pod",
+                            "span": 6,
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              },
+                              {
+                                "key": "request",
+                                "name": "request",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              }
+                            ]
+                          },
+                          {
+                            "name": "memory_chart",
+                            "title": "Память по подам",
+                            "graphType": "line",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "sum by (pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                            "metricName": "pod",
+                            "span": 6,
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "name": "fit_cpu",
+                        "title": "CPU: request против потребления",
+                        "layout": "fit",
+                        "description": "все поды · по контейнерам · за 7 дней (или меньше, если Prometheus хранит меньше)",
+                        "graphs": [
+                          {
+                            "name": "fit_cpu_p50",
+                            "title": "p50",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "quantile_over_time(0.5, (max by (container) (sum by (container, pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "p50"
+                          },
+                          {
+                            "name": "fit_cpu_p95",
+                            "title": "p95",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "quantile_over_time(0.95, (max by (container) (sum by (container, pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "p95"
+                          },
+                          {
+                            "name": "fit_cpu_max",
+                            "title": "max",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "max_over_time((max by (container) (sum by (container, pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "max"
+                          },
+                          {
+                            "name": "fit_cpu_request",
+                            "title": "request",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "max by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "request"
+                          },
+                          {
+                            "name": "fit_cpu_limit",
+                            "title": "limit",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "max by (container) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "limit"
+                          },
+                          {
+                            "name": "fit_cpu_above",
+                            "title": "Выше request",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * avg_over_time((max by (container) (sum by (container, pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))) > bool on (container) max by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"}))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "above"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "fit_memory",
+                        "title": "Память: request против потребления",
+                        "layout": "fit",
+                        "description": "все поды · по контейнерам · за 7 дней (или меньше, если Prometheus хранит меньше)",
+                        "graphs": [
+                          {
+                            "name": "fit_memory_p50",
+                            "title": "p50",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "quantile_over_time(0.5, (max by (container) (sum by (container, pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "p50"
+                          },
+                          {
+                            "name": "fit_memory_p95",
+                            "title": "p95",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "quantile_over_time(0.95, (max by (container) (sum by (container, pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "p95"
+                          },
+                          {
+                            "name": "fit_memory_max",
+                            "title": "max",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "max_over_time((max by (container) (sum by (container, pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "max"
+                          },
+                          {
+                            "name": "fit_memory_request",
+                            "title": "request",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "max by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "request"
+                          },
+                          {
+                            "name": "fit_memory_limit",
+                            "title": "limit",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "max by (container) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "limit"
+                          },
+                          {
+                            "name": "fit_memory_above",
+                            "title": "Выше request",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * avg_over_time((max by (container) (sum by (container, pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})) > bool on (container) max by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"}))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "above"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "groupKind": "statefulset",
+                    "intervals": [
+                      "15m",
+                      "1h",
+                      "6h",
+                      "24h"
+                    ],
+                    "rows": [
+                      {
+                        "name": "kpi",
+                        "title": "Ключевые показатели",
+                        "graphs": [
+                          {
+                            "name": "requests",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[1m]))",
+                            "goodDirection": "up",
+                            "optional": true,
+                            "description": "Входящие HTTP-запросы"
+                          },
+                          {
+                            "name": "errors_5xx",
+                            "title": "Ошибки 5xx",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\", http_response_status_code=~\"5..\"}[5m])) or 0 * sum (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))) / sum (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))",
+                            "goodDirection": "down",
+                            "optional": true,
+                            "colorSchemes": [
+                              "#B42318"
+                            ]
+                          },
+                          {
+                            "name": "latency_p90",
+                            "title": "Latency p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m])))",
+                            "goodDirection": "down",
+                            "optional": true,
+                            "colorSchemes": [
+                              "#3B82F6"
+                            ]
+                          },
+                          {
+                            "name": "latency_p99",
+                            "title": "Latency p99",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m])))",
+                            "goodDirection": "down",
+                            "optional": true,
+                            "colorSchemes": [
+                              "#C2410C"
+                            ]
+                          },
+                          {
+                            "name": "restarts",
+                            "title": "Рестарты",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "queryType": "instant",
+                            "warnAbove": 0,
+                            "description": "Рестарты контейнеров за выбранный период"
+                          },
+                          {
+                            "name": "probes_failed",
+                            "title": "Неудачные probe",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum by (probe_type) (increase(prober_probe_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", result=\"failed\"}[{{.duration}}]))",
+                            "queryType": "instant",
+                            "splitBy": "probe_type",
+                            "warnAbove": 0,
+                            "description": "Неудачные liveness/readiness/startup probe за выбранный период"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "http_charts",
+                        "title": "Входящие запросы",
+                        "graphs": [
+                          {
+                            "name": "latency",
+                            "title": "Latency",
+                            "graphType": "line",
+                            "yAxisUnit": "s",
+                            "queryExpression": "label_replace(histogram_quantile(0.5, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))), \"quantile\", \"p50\", \"\", \"\") or label_replace(histogram_quantile(0.9, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))), \"quantile\", \"p90\", \"\", \"\") or label_replace(histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))), \"quantile\", \"p99\", \"\", \"\")",
+                            "metricName": "quantile",
+                            "span": 6,
+                            "optional": true,
+                            "description": "http_server_request_duration_seconds",
+                            "colorSchemes": [
+                              "#1E40AF",
+                              "#3B82F6",
+                              "#C2410C"
+                            ]
+                          },
+                          {
+                            "name": "traffic_by_code",
+                            "title": "Запросы по кодам ответа",
+                            "graphType": "bar",
+                            "metricName": "code",
+                            "yAxisUnit": "req/s",
+                            "span": 6,
+                            "optional": true,
+                            "description": "http_server_request_duration_seconds_count",
+                            "queryExpression": "sum by (code) (label_replace(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[1m]), \"code\", \"${1}xx\", \"http_response_status_code\", \"(.)..\"))"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "routes",
+                        "title": "Эндпоинты",
+                        "layout": "table",
+                        "description": "входящие HTTP по маршрутам · среднее за период",
+                        "graphs": [
+                          {
+                            "name": "route_rps",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}]))",
+                            "metricName": "http_route",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "route_5xx",
+                            "title": "5xx",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\", http_response_status_code=~\"5..\"}[{{.duration}}])) or 0 * sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}]))) / sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}]))",
+                            "metricName": "http_route",
+                            "queryType": "instant",
+                            "warnAbove": 1,
+                            "optional": true
+                          },
+                          {
+                            "name": "route_p90",
+                            "title": "p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}])))",
+                            "metricName": "http_route",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "route_trend",
+                            "title": "Тренд",
+                            "graphType": "line",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))",
+                            "metricName": "http_route",
+                            "optional": true
+                          }
+                        ]
+                      },
+                      {
+                        "name": "http_deps",
+                        "title": "Исходящие HTTP",
+                        "layout": "table",
+                        "description": "http_client_* · среднее за период",
+                        "graphs": [
+                          {
+                            "name": "out_rps",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "out_5xx",
+                            "title": "5xx",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_response_status_code=~\"5..\"}[{{.duration}}])) or 0 * sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))) / sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "warnAbove": 1,
+                            "optional": true
+                          },
+                          {
+                            "name": "out_p90",
+                            "title": "p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, server_address) (rate(http_client_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}])))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "out_queue_p90",
+                            "title": "Ожидание соединения p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, server_address) (rate(http_client_request_time_in_queue_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}])))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "out_trend",
+                            "title": "Тренд",
+                            "graphType": "line",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))",
+                            "metricName": "server_address",
+                            "optional": true
+                          }
+                        ]
+                      },
+                      {
+                        "name": "graph_deps",
+                        "title": "Зависимости по трейсам",
+                        "layout": "table",
+                        "description": "service graph · Redis, БД, Kafka и другие сервисы · среднее за период",
+                        "graphs": [
+                          {
+                            "name": "dep_rps",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (server) (rate(traces_service_graph_request_total{client=\"{{.resource}}\"}[{{.duration}}]))",
+                            "metricName": "server",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "dep_errors",
+                            "title": "Ошибки",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum by (server) (rate(traces_service_graph_request_failed_total{client=\"{{.resource}}\"}[{{.duration}}])) or 0 * sum by (server) (rate(traces_service_graph_request_total{client=\"{{.resource}}\"}[{{.duration}}]))) / sum by (server) (rate(traces_service_graph_request_total{client=\"{{.resource}}\"}[{{.duration}}]))",
+                            "metricName": "server",
+                            "queryType": "instant",
+                            "warnAbove": 1,
+                            "optional": true
+                          },
+                          {
+                            "name": "dep_p90",
+                            "title": "p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, server) (rate(traces_service_graph_request_server_seconds_bucket{client=\"{{.resource}}\"}[{{.duration}}])))",
+                            "metricName": "server",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "dep_trend",
+                            "title": "Тренд",
+                            "graphType": "line",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (server) (rate(traces_service_graph_request_total{client=\"{{.resource}}\"}[5m]))",
+                            "metricName": "server",
+                            "optional": true
+                          }
+                        ]
+                      },
+                      {
+                        "name": "units",
+                        "title": "Поды",
+                        "layout": "units",
+                        "description": "сумма по контейнерам пода · полоса = % от limit, черта = request",
+                        "graphs": [
+                          {
+                            "name": "unit_cpu",
+                            "title": "CPU",
+                            "graphType": "line",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                            "metricName": "pod",
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              },
+                              {
+                                "key": "request",
+                                "name": "request",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              }
+                            ]
+                          },
+                          {
+                            "name": "unit_memory",
+                            "title": "Память",
+                            "graphType": "line",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "sum by (pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                            "metricName": "pod",
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                              },
+                              {
+                                "key": "request",
+                                "name": "request",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                              }
+                            ]
+                          },
+                          {
+                            "name": "unit_throttling",
+                            "title": "Throttling",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * sum by (pod) (rate(container_cpu_cfs_throttled_periods_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}])) / sum by (pod) (rate(container_cpu_cfs_periods_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "pod",
+                            "queryType": "instant",
+                            "warnAbove": 5
+                          },
+                          {
+                            "name": "unit_restarts",
+                            "title": "Рестарты",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum by (pod) (increase(kube_pod_container_status_restarts_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "pod",
+                            "queryType": "instant",
+                            "warnAbove": 0
+                          },
+                          {
+                            "name": "unit_probes",
+                            "title": "Probe L/R/S",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum by (pod, probe_type) (increase(prober_probe_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", result=\"failed\"}[{{.duration}}]))",
+                            "metricName": "pod",
+                            "queryType": "instant",
+                            "splitBy": "probe_type",
+                            "warnAbove": 0
+                          },
+                          {
+                            "name": "unit_last_reason",
+                            "title": "Последнее завершение",
+                            "graphType": "note",
+                            "metricName": "pod",
+                            "queryType": "instant",
+                            "splitBy": "reason",
+                            "queryExpression": "max by (pod, reason) (kube_pod_container_status_last_terminated_reason{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}) > 0"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "resource_charts",
+                        "title": "Ресурсы",
+                        "graphs": [
+                          {
+                            "name": "cpu_chart",
+                            "title": "CPU по подам",
+                            "graphType": "line",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                            "metricName": "pod",
+                            "span": 6,
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              },
+                              {
+                                "key": "request",
+                                "name": "request",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              }
+                            ]
+                          },
+                          {
+                            "name": "memory_chart",
+                            "title": "Память по подам",
+                            "graphType": "line",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "sum by (pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                            "metricName": "pod",
+                            "span": 6,
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (pod) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "name": "fit_cpu",
+                        "title": "CPU: request против потребления",
+                        "layout": "fit",
+                        "description": "все поды · по контейнерам · за 7 дней (или меньше, если Prometheus хранит меньше)",
+                        "graphs": [
+                          {
+                            "name": "fit_cpu_p50",
+                            "title": "p50",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "quantile_over_time(0.5, (max by (container) (sum by (container, pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "p50"
+                          },
+                          {
+                            "name": "fit_cpu_p95",
+                            "title": "p95",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "quantile_over_time(0.95, (max by (container) (sum by (container, pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "p95"
+                          },
+                          {
+                            "name": "fit_cpu_max",
+                            "title": "max",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "max_over_time((max by (container) (sum by (container, pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "max"
+                          },
+                          {
+                            "name": "fit_cpu_request",
+                            "title": "request",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "max by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "request"
+                          },
+                          {
+                            "name": "fit_cpu_limit",
+                            "title": "limit",
+                            "graphType": "stat",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "max by (container) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "limit"
+                          },
+                          {
+                            "name": "fit_cpu_above",
+                            "title": "Выше request",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * avg_over_time((max by (container) (sum by (container, pod) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))) > bool on (container) max by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"}))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "above"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "fit_memory",
+                        "title": "Память: request против потребления",
+                        "layout": "fit",
+                        "description": "все поды · по контейнерам · за 7 дней (или меньше, если Prometheus хранит меньше)",
+                        "graphs": [
+                          {
+                            "name": "fit_memory_p50",
+                            "title": "p50",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "quantile_over_time(0.5, (max by (container) (sum by (container, pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "p50"
+                          },
+                          {
+                            "name": "fit_memory_p95",
+                            "title": "p95",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "quantile_over_time(0.95, (max by (container) (sum by (container, pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "p95"
+                          },
+                          {
+                            "name": "fit_memory_max",
+                            "title": "max",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "max_over_time((max by (container) (sum by (container, pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "max"
+                          },
+                          {
+                            "name": "fit_memory_request",
+                            "title": "request",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "max by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "request"
+                          },
+                          {
+                            "name": "fit_memory_limit",
+                            "title": "limit",
+                            "graphType": "stat",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "max by (container) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "limit"
+                          },
+                          {
+                            "name": "fit_memory_above",
+                            "title": "Выше request",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * avg_over_time((max by (container) (sum by (container, pod) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})) > bool on (container) max by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"}))[7d:5m])",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "role": "above"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "groupKind": "pod",
+                    "intervals": [
+                      "15m",
+                      "1h",
+                      "6h",
+                      "24h"
+                    ],
+                    "rows": [
+                      {
+                        "name": "kpi",
+                        "title": "Ключевые показатели",
+                        "graphs": [
+                          {
+                            "name": "requests",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[1m]))",
+                            "goodDirection": "up",
+                            "optional": true,
+                            "description": "Входящие HTTP-запросы"
+                          },
+                          {
+                            "name": "errors_5xx",
+                            "title": "Ошибки 5xx",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\", http_response_status_code=~\"5..\"}[5m])) or 0 * sum (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))) / sum (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))",
+                            "goodDirection": "down",
+                            "optional": true,
+                            "colorSchemes": [
+                              "#B42318"
+                            ]
+                          },
+                          {
+                            "name": "latency_p90",
+                            "title": "Latency p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m])))",
+                            "goodDirection": "down",
+                            "optional": true,
+                            "colorSchemes": [
+                              "#3B82F6"
+                            ]
+                          },
+                          {
+                            "name": "latency_p99",
+                            "title": "Latency p99",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m])))",
+                            "goodDirection": "down",
+                            "optional": true,
+                            "colorSchemes": [
+                              "#C2410C"
+                            ]
+                          },
+                          {
+                            "name": "restarts",
+                            "title": "Рестарты",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "queryType": "instant",
+                            "warnAbove": 0,
+                            "description": "Рестарты контейнеров за выбранный период"
+                          },
+                          {
+                            "name": "probes_failed",
+                            "title": "Неудачные probe",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum by (probe_type) (increase(prober_probe_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", result=\"failed\"}[{{.duration}}]))",
+                            "queryType": "instant",
+                            "splitBy": "probe_type",
+                            "warnAbove": 0,
+                            "description": "Неудачные liveness/readiness/startup probe за выбранный период"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "http_charts",
+                        "title": "Входящие запросы",
+                        "graphs": [
+                          {
+                            "name": "latency",
+                            "title": "Latency",
+                            "graphType": "line",
+                            "yAxisUnit": "s",
+                            "queryExpression": "label_replace(histogram_quantile(0.5, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))), \"quantile\", \"p50\", \"\", \"\") or label_replace(histogram_quantile(0.9, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))), \"quantile\", \"p90\", \"\", \"\") or label_replace(histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))), \"quantile\", \"p99\", \"\", \"\")",
+                            "metricName": "quantile",
+                            "span": 6,
+                            "optional": true,
+                            "description": "http_server_request_duration_seconds",
+                            "colorSchemes": [
+                              "#1E40AF",
+                              "#3B82F6",
+                              "#C2410C"
+                            ]
+                          },
+                          {
+                            "name": "traffic_by_code",
+                            "title": "Запросы по кодам ответа",
+                            "graphType": "bar",
+                            "metricName": "code",
+                            "yAxisUnit": "req/s",
+                            "span": 6,
+                            "optional": true,
+                            "description": "http_server_request_duration_seconds_count",
+                            "queryExpression": "sum by (code) (label_replace(rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[1m]), \"code\", \"${1}xx\", \"http_response_status_code\", \"(.)..\"))"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "routes",
+                        "title": "Эндпоинты",
+                        "layout": "table",
+                        "description": "входящие HTTP по маршрутам · среднее за период",
+                        "graphs": [
+                          {
+                            "name": "route_rps",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}]))",
+                            "metricName": "http_route",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "route_5xx",
+                            "title": "5xx",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\", http_response_status_code=~\"5..\"}[{{.duration}}])) or 0 * sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}]))) / sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}]))",
+                            "metricName": "http_route",
+                            "queryType": "instant",
+                            "warnAbove": 1,
+                            "optional": true
+                          },
+                          {
+                            "name": "route_p90",
+                            "title": "p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[{{.duration}}])))",
+                            "metricName": "http_route",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "route_trend",
+                            "title": "Тренд",
+                            "graphType": "line",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (http_route) (rate(http_server_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_route!~\"/health.*|/healthz|/ready.*|/live.*|/metrics|/scalar.*|/openapi.*|/swagger.*|/favicon.ico\"}[5m]))",
+                            "metricName": "http_route",
+                            "optional": true
+                          }
+                        ]
+                      },
+                      {
+                        "name": "http_deps",
+                        "title": "Исходящие HTTP",
+                        "layout": "table",
+                        "description": "http_client_* · среднее за период",
+                        "graphs": [
+                          {
+                            "name": "out_rps",
+                            "title": "Запросы",
+                            "graphType": "stat",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "out_5xx",
+                            "title": "5xx",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * (sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", http_response_status_code=~\"5..\"}[{{.duration}}])) or 0 * sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))) / sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "warnAbove": 1,
+                            "optional": true
+                          },
+                          {
+                            "name": "out_p90",
+                            "title": "p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, server_address) (rate(http_client_request_duration_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}])))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "out_queue_p90",
+                            "title": "Ожидание соединения p90",
+                            "graphType": "stat",
+                            "yAxisUnit": "s",
+                            "queryExpression": "histogram_quantile(0.9, sum by (le, server_address) (rate(http_client_request_time_in_queue_seconds_bucket{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}])))",
+                            "metricName": "server_address",
+                            "queryType": "instant",
+                            "optional": true
+                          },
+                          {
+                            "name": "out_trend",
+                            "title": "Тренд",
+                            "graphType": "line",
+                            "yAxisUnit": "req/s",
+                            "queryExpression": "sum by (server_address) (rate(http_client_request_duration_seconds_count{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[5m]))",
+                            "metricName": "server_address",
+                            "optional": true
+                          }
+                        ]
+                      },
+                      {
+                        "name": "units",
+                        "title": "Контейнеры",
+                        "layout": "units",
+                        "description": "полоса = % от limit, черта = request",
+                        "graphs": [
+                          {
+                            "name": "unit_cpu",
+                            "title": "CPU",
+                            "graphType": "line",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "sum by (container) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                            "metricName": "container",
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (container) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              },
+                              {
+                                "key": "request",
+                                "name": "request",
+                                "queryExpression": "sum by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              }
+                            ]
+                          },
+                          {
+                            "name": "unit_memory",
+                            "title": "Память",
+                            "graphType": "line",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "sum by (container) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                            "metricName": "container",
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (container) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                              },
+                              {
+                                "key": "request",
+                                "name": "request",
+                                "queryExpression": "sum by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                              }
+                            ]
+                          },
+                          {
+                            "name": "unit_throttling",
+                            "title": "Throttling",
+                            "graphType": "stat",
+                            "yAxisUnit": "%",
+                            "queryExpression": "100 * sum by (container) (rate(container_cpu_cfs_throttled_periods_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[{{.duration}}])) / sum by (container) (rate(container_cpu_cfs_periods_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[{{.duration}}]))",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "warnAbove": 5
+                          },
+                          {
+                            "name": "unit_restarts",
+                            "title": "Рестарты",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum by (container) (increase(kube_pod_container_status_restarts_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}[{{.duration}}]))",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "warnAbove": 0
+                          },
+                          {
+                            "name": "unit_probes",
+                            "title": "Probe L/R/S",
+                            "graphType": "stat",
+                            "yAxisUnit": "count",
+                            "queryExpression": "sum by (container, probe_type) (increase(prober_probe_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", result=\"failed\"}[{{.duration}}]))",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "splitBy": "probe_type",
+                            "warnAbove": 0
+                          },
+                          {
+                            "name": "unit_last_reason",
+                            "title": "Последнее завершение",
+                            "graphType": "note",
+                            "metricName": "container",
+                            "queryType": "instant",
+                            "splitBy": "reason",
+                            "queryExpression": "max by (container, reason) (kube_pod_container_status_last_terminated_reason{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\"}) > 0"
+                          }
+                        ]
+                      },
+                      {
+                        "name": "resource_charts",
+                        "title": "Ресурсы",
+                        "graphs": [
+                          {
+                            "name": "cpu_chart",
+                            "title": "CPU по контейнерам",
+                            "graphType": "line",
+                            "yAxisUnit": "cores",
+                            "queryExpression": "sum by (container) (rate(container_cpu_usage_seconds_total{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"}[5m]))",
+                            "metricName": "container",
+                            "span": 6,
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (container) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              },
+                              {
+                                "key": "request",
+                                "name": "request",
+                                "queryExpression": "sum by (container) (kube_pod_container_resource_requests{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"cpu\"})"
+                              }
+                            ]
+                          },
+                          {
+                            "name": "memory_chart",
+                            "title": "Память по контейнерам",
+                            "graphType": "line",
+                            "yAxisUnit": "bytes",
+                            "queryExpression": "sum by (container) (container_memory_working_set_bytes{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", container!=\"\", container!=\"POD\"})",
+                            "metricName": "container",
+                            "span": 6,
+                            "thresholds": [
+                              {
+                                "key": "limit",
+                                "name": "limit",
+                                "queryExpression": "sum by (container) (kube_pod_container_resource_limits{namespace=\"{{.namespace}}\", pod=~\"{{.name}}\", resource=\"memory\"})"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "provider": {
+              "Name": "default",
               "default": true,
-              "dashboards": [
-                {
-                  "groupKind": "pod",
-                  "tabs": ["Golden Signal"],
-                  "rows": [
-                        {
-                      "name": "pod",
-                      "title": "Pods",
-                      "tab": "Golden Signal",
-                      "graphs": [
-                        {
-                          "name": "pod_cpu_line",
-                          "title": "CPU",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "pod",
-                          "queryExpression": "sum(rate(container_cpu_usage_seconds_total{pod=~\"{{.name}}\", image!=\"\", container!=\"POD\", container!=\"\", container_name!=\"POD\"}[5m])) by (pod)"
-                        },
-                        {
-                          "name": "pod_cpu_pie",
-                          "title": "CPU Avg",
-                          "description": "",
-                          "graphType": "pie",
-                          "metricName": "pod",
-                          "queryExpression": "sum(rate(container_cpu_usage_seconds_total{pod=~\"{{.name}}\", container!=\"POD\", image!=\"\", container!=\"\", container_name!=\"POD\"}[5m])) by (pod)"
-                        },
-                        {
-                          "name": "pod_memory_line",
-                          "title": "Memory",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "pod",
-                          "queryExpression": "sum(rate(container_memory_usage_bytes{pod=~\"{{.name}}\", container!=\"POD\", image!=\"\", container!=\"\", container_name!=\"POD\"}[5m])) by (pod)"
-                        },
-                        {
-                          "name": "pod_memory_pie",
-                          "title": "Mem Avg",
-                          "description": "",
-                          "graphType": "pie",
-                          "metricName": "pod",
-                          "queryExpression": "sum(rate(container_memory_usage_bytes{pod=~\"{{.name}}\", container!=\"POD\", image!=\"\", container!=\"\", container_name!=\"POD\"}[5m])) by (pod)"
-                        }
-                      ]
-                    },
-                    {
-                      "name": "container",
-                      "title": "Containers",
-                      "tab": "Golden Signal",
-                      "graphs": [
-                        {
-                          "name": "container_cpu_line",
-                          "title": "CPU",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "container",
-                          "queryExpression": "sum(rate(container_cpu_usage_seconds_total{pod=~\"{{.name}}\", image!=\"\", container!=\"POD\", container!=\"\", container_name!=\"POD\"}[5m])) by (container)"
-                        },
-                        {
-                          "name": "container_cpu_pie",
-                          "title": "CPU Avg",
-                          "description": "",
-                          "graphType": "pie",
-                          "metricName": "container",
-                          "queryExpression": "sum(rate(container_cpu_usage_seconds_total{pod=~\"{{.name}}\", image!=\"\",container!=\"POD\", container!=\"\", container_name!=\"POD\"}[5m])) by (container)"
-                        },
-                        {
-                          "name": "container_memory_line",
-                          "title": "Memory",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "container",
-                          "queryExpression": "sum(rate(container_memory_usage_bytes{pod=~\"{{.name}}\", image!=\"\", container!=\"POD\", container!=\"\", container_name!=\"POD\"}[5m])) by (container)"
-                        },
-                        {
-                          "name": "container_memory_pie",
-                          "title": "Mem Avg",
-                          "description": "",
-                          "graphType": "pie",
-                          "metricName": "container",
-                          "queryExpression": "sum(rate(container_memory_usage_bytes{pod=~\"{{.name}}\", image!=\"\", container!=\"POD\", container!=\"\", container_name!=\"POD\"}[5m])) by (container)"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "groupKind": "deployment",
-                  "tabs": ["Golden Signal"],
-                  "rows": [
-                    {
-                      "name": "httplatency",
-                      "title": "HTTP Latency",
-                      "tab": "Golden Signal",
-                      "graphs": [
-                        {
-                          "name": "http_200_latency",
-                          "title": "Latency",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "pod_template_hash",
-                          "queryExpression": "sum(rate(http_server_requests_seconds_sum {namespace=\"{{.namespace}}\", status=\"200\"} [1m])) by (pod_template_hash)"
-                        }
-                      ]
-                    },
-                    {
-                      "name": "httperrortate",
-                      "title": "HTTP Error Rate",
-                      "tab": "Golden Signal",
-                      "graphs": [
-                        {
-                          "name": "http_error_rate_500",
-                          "title": "HTTP Error 500",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "pod_template_hash",
-                          "queryExpression": "sum(rate(http_server_requests_seconds_count {namespace=\"{{.namespace}}\", status=\"500\"} [1m])) by (pod_template_hash)"
-                        },
-                        {
-                          "name": "http_error_rate_400",
-                          "title": "HTTP Error 400",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "pod_template_hash",
-                          "queryExpression": "sum(rate(http_server_requests_seconds_count {namespace=\"{{.namespace}}\", status=\"404\"} [1m])) by (pod_template_hash)"
-                        }
-                      ]
-                    },
-                    {
-                      "name": "httptraffic",
-                      "title": "HTTP Traffic",
-                      "tab": "Golden Signal",
-                      "graphs": [
-                        {
-                          "name": "http_traffic",
-                          "title": "Traffic",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "pod_template_hash",
-                          "queryExpression": "sum(rate(http_server_requests_seconds_count {namespace=\"{{.namespace}}\"} [1m])) by (pod_template_hash)"
-                        }
-                      ]
-                    },
-                    {
-                      "name": "pod",
-                      "title": "Pods",
-                      "tab": "Golden Signal",
-                      "graphs": [
-                        {
-                          "name": "pod_cpu_line",
-                          "title": "CPU",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "pod",
-                          "queryExpression": "sum(rate(container_cpu_usage_seconds_total{pod=~\"{{.name}}\", image!=\"\", container!=\"POD\", container!=\"\", container_name!=\"POD\"}[5m])) by (pod)"
-                        },
-                        {
-                          "name": "pod_cpu_pie",
-                          "title": "CPU Avg",
-                          "description": "",
-                          "graphType": "pie",
-                          "metricName": "pod",
-                          "queryExpression": "sum(rate(container_cpu_usage_seconds_total{pod=~\"{{.name}}\", container!=\"POD\", image!=\"\", container!=\"\", container_name!=\"POD\"}[5m])) by (pod)"
-                        },
-                        {
-                          "name": "pod_memory_line",
-                          "title": "Memory",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "pod",
-                          "queryExpression": "sum(rate(container_memory_usage_bytes{pod=~\"{{.name}}\", container!=\"POD\", image!=\"\", container!=\"\", container_name!=\"POD\"}[5m])) by (pod)"
-                        },
-                        {
-                          "name": "pod_memory_pie",
-                          "title": "Mem Avg",
-                          "description": "",
-                          "graphType": "pie",
-                          "metricName": "pod",
-                          "queryExpression": "sum(rate(container_memory_usage_bytes{pod=~\"{{.name}}\", container!=\"POD\", image!=\"\", container!=\"\", container_name!=\"POD\"}[5m])) by (pod)"
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "groupKind": "rollout",
-                  "tabs": ["Golden Signal"],
-                  "rows": [
-                    {
-                      "name": "httplatency",
-                      "title": "HTTP Latency",
-                      "tab": "Golden Signal",
-                      "graphs": [
-                        {
-                          "name": "http_200_latency",
-                          "title": "Latency",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "rollout_template_hash",
-                          "queryExpression": "sum(rate(http_server_requests_seconds_sum {namespace=\"{{.namespace}}\", status=\"200\"} [1m])) by (rollout_template_hash)"
-                        }
-                      ]
-                    },
-                    {
-                      "name": "httperrortate",
-                      "title": "HTTP Error Rate",
-                      "tab": "Golden Signal",
-                      "graphs": [
-                        {
-                          "name": "http_error_rate_500",
-                          "title": "HTTP Error 500",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "rollout_template_hash",
-                          "queryExpression": "sum(rate(http_server_requests_seconds_count {namespace=\"{{.namespace}}\", status=\"500\"} [1m])) by (rollout_template_hash)"
-                        },
-                        {
-                          "name": "http_error_rate_400",
-                          "title": "HTTP Error 400",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "rollout_template_hash",
-                          "queryExpression": "sum(rate(http_server_requests_seconds_count {namespace=\"{{.namespace}}\", status=\"404\"} [1m])) by (rollout_template_hash)"
-                        }
-                      ]
-                    },
-                    {
-                      "name": "httptraffic",
-                      "title": "HTTP Traffic",
-                      "tab": "Golden Signal",
-                      "graphs": [
-                        {
-                          "name": "http_traffic",
-                          "title": "Traffic",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "rollout_template_hash",
-                          "queryExpression": "sum(rate(http_server_requests_seconds_count {namespace=\"{{.namespace}}\"} [1m])) by (rollout_template_hash)"
-                        }
-                      ]
-                    },
-                    {
-                      "name": "pod",
-                      "title": "Pods",
-                      "tab": "Golden Signal",
-                      "graphs": [
-                        {
-                          "name": "pod_cpu_line",
-                          "title": "CPU",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "pod",
-                          "queryExpression": "sum(rate(container_cpu_usage_seconds_total{pod=~\"{{.name}}\", image!=\"\", container!=\"POD\", container!=\"\", container_name!=\"POD\"}[5m])) by (pod)"
-                        },
-                        {
-                          "name": "pod_cpu_pie",
-                          "title": "CPU Avg",
-                          "description": "",
-                          "graphType": "pie",
-                          "metricName": "pod",
-                          "queryExpression": "sum(rate(container_cpu_usage_seconds_total{pod=~\"{{.name}}\", container!=\"POD\", image!=\"\", container!=\"\", container_name!=\"POD\"}[5m])) by (pod)"
-                        },
-                        {
-                          "name": "pod_memory_line",
-                          "title": "Memory",
-                          "description": "",
-                          "graphType": "line",
-                          "metricName": "pod",
-                          "queryExpression": "sum(rate(container_memory_usage_bytes{pod=~\"{{.name}}\", container!=\"POD\", image!=\"\", container!=\"\", container_name!=\"POD\"}[5m])) by (pod)"
-                        },
-                        {
-                          "name": "pod_memory_pie",
-                          "title": "Mem Avg",
-                          "description": "",
-                          "graphType": "pie",
-                          "metricName": "pod",
-                          "queryExpression": "sum(rate(container_memory_usage_bytes{pod=~\"{{.name}}\", container!=\"POD\", image!=\"\", container!=\"\", container_name!=\"POD\"}[5m])) by (pod)"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
+              "address": "http://pr-kube-prometheus-stack-prometheus.mon.svc.cluster.local:9090"
             }
-          ],
-          "provider":
-          {
-            "Name": "default",
-            "default": true,
-            "address": "http://pr-kube-prometheus-stack-prometheus.mon.svc.cluster.local:9090"
           }
-        }
         }

@@ -42,6 +42,13 @@ export function seriesName(metric: Record<string, string>, groupBy?: string): st
   return vals.length ? vals.join(":") : "value";
 }
 
+/** Points of a range series, or the single point of an instant one. */
+export function seriesPoints(s: PromSeries): Point[] {
+  if (s.values) return toPoints(s.values);
+  if (s.value) return toPoints([s.value]);
+  return [];
+}
+
 function toPoints(values: [number, string][]): Point[] {
   const out: Point[] = [];
   for (const [ts, raw] of values || []) {
@@ -51,13 +58,20 @@ function toPoints(values: [number, string][]): Point[] {
   return out;
 }
 
-export function toSeries(data: PromSeries[] | null | undefined, graph: Graph): Series[] {
+export const byName = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
+
+/** colorMap pins colours of pods/containers so the same unit has the same colour on every chart. */
+export function toSeries(data: PromSeries[] | null | undefined, graph: Graph, colorMap?: Record<string, string>): Series[] {
   const colors = graph.colorSchemes && graph.colorSchemes.length ? graph.colorSchemes : PALETTE;
   const list = (data || [])
-    .map((s) => ({ name: seriesName(s.metric, graph.metricName), points: toPoints(s.values) }))
+    .map((s) => ({ name: seriesName(s.metric, graph.metricName), points: seriesPoints(s) }))
     .filter((s) => s.points.length > 0)
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-  return list.map((s, i) => ({ ...s, color: codeColor(s.name) || colors[i % colors.length] }));
+    .sort((a, b) => byName(a.name, b.name));
+  return list.map((s, i) => ({ ...s, color: (colorMap && colorMap[s.name]) || codeColor(s.name) || colors[i % colors.length] }));
+}
+
+export function hasData(data: PromSeries[] | null | undefined): boolean {
+  return (data || []).some((s) => seriesPoints(s).length > 0);
 }
 
 const THRESHOLD_STYLE: Record<string, { color: string; dashed: string }> = {
@@ -71,7 +85,7 @@ export function thresholdLines(thresholds: ThresholdResult[] | null | undefined)
   return (thresholds || [])
     .map((th) => {
       const style = THRESHOLD_STYLE[(th.key || "").toLowerCase()] || { color: "#9CA3AF", dashed: "5 4" };
-      const all = (th.data || []).map((s) => toPoints(s.values));
+      const all = (th.data || []).map(seriesPoints);
       return {
         name: th.name || th.key,
         color: th.color || style.color,
@@ -107,14 +121,14 @@ export interface StatValue {
 
 /** Stat tiles and gauges: sum of all series (e.g. CPU of every pod), limit = sum of the "limit" threshold (or the first one). */
 export function statValue(result: GraphResult | undefined): StatValue {
-  const series = (result?.data || []).map((s) => toPoints(s.values));
+  const series = (result?.data || []).map(seriesPoints);
   const points = combine(series, add);
   const thresholds = result?.thresholds || [];
   const th = thresholds.find((t) => (t.key || "").toLowerCase() === "limit") || thresholds[0];
   let limit: number | null = null;
   if (th) {
     if (th.data && th.data.length) {
-      const lp = combine(th.data.map((s) => toPoints(s.values)), add);
+      const lp = combine(th.data.map(seriesPoints), add);
       limit = lp.length ? lp[lp.length - 1].v : null;
     }
     if (limit === null && th.value && isFinite(parseFloat(th.value))) limit = parseFloat(th.value);
@@ -129,6 +143,17 @@ export function statValue(result: GraphResult | undefined): StatValue {
 
 export function lastValue(points: Point[]): number | null {
   return points.length ? points[points.length - 1].v : null;
+}
+
+/** Change over the window: mean of the last 10% of points against the first 10%, in percent. */
+export function trendPercent(points: Point[]): number | null {
+  if (points.length < 4) return null;
+  const k = Math.max(2, Math.round(points.length * 0.1));
+  const mean = (ps: Point[]) => ps.reduce((a, p) => a + p.v, 0) / ps.length;
+  const first = mean(points.slice(0, k));
+  const last = mean(points.slice(-k));
+  if (!first) return null;
+  return ((last - first) / Math.abs(first)) * 100;
 }
 
 // ---------- formatting ----------
@@ -159,6 +184,8 @@ export function formatParts(v: number | null | undefined, unit?: string): [strin
     return [n, base + "/s"];
   }
   switch (u.toLowerCase()) {
+    case "count":
+      return [String(Math.round(v)), ""];
     case "bytes":
     case "b": {
       const units = ["B", "KiB", "MiB", "GiB", "TiB"];
